@@ -22,7 +22,7 @@ The repository will be updated with the Refiner implementation, inference pipeli
 @inproceedings{song2026loopt,
   title     = {Diagnose, Then Refine: A Closed-Loop TTS System with AudioLLM-Guided Correction},
   author    = {Song, Zeyang and Liu, Tianchi and Wang, Tianrui and Xu, Chenglin and Guo, Yiwen and Li, Haizhou},
-  booktitle = {Proceedings of the 64th Annual Meeting of the Association for Computational Linguistics},
+  booktitle = {Proceedings of the 2026 Conference on Empirical Methods in Natural Language Processing},
   year      = {2026}
 }
 ```
@@ -30,4 +30,3 @@ The repository will be updated with the Refiner implementation, inference pipeli
 ## Authors
 
 Zeyang Song, Tianchi Liu, Tianrui Wang, Chenglin Xu, Yiwen Guo, and Haizhou Li.
-
