@@ -1,0 +1,37 @@
+cff-version: 1.2.0
+message: "If you use LoopTTS in your research, please cite this work."
+title: "LoopTTS"
+type: software
+authors:
+  - family-names: Song
+    given-names: Zeyang
+  - family-names: Liu
+    given-names: Tianchi
+  - family-names: Wang
+    given-names: Tianrui
+  - family-names: Xu
+    given-names: Chenglin
+  - family-names: Guo
+    given-names: Yiwen
+  - family-names: Li
+    given-names: Haizhou
+repository-code: "https://github.com/Pooookeman/LoopTTS"
+url: "https://pooookeman.github.io/LoopTTS/"
+preferred-citation:
+  type: conference-paper
+  title: "Diagnose, Then Refine: A Closed-Loop TTS System with AudioLLM-Guided Correction"
+  authors:
+    - family-names: Song
+      given-names: Zeyang
+    - family-names: Liu
+      given-names: Tianchi
+    - family-names: Wang
+      given-names: Tianrui
+    - family-names: Xu
+      given-names: Chenglin
+    - family-names: Guo
+      given-names: Yiwen
+    - family-names: Li
+      given-names: Haizhou
+  collection-title: "Proceedings of the 64th Annual Meeting of the Association for Computational Linguistics"
+  year: 2026

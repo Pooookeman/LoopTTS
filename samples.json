@@ -1,0 +1,162 @@
+{
+  "categories": [
+    {
+      "id": "emosp",
+      "title": "Emotional Fine-Grained Control",
+      "description": "Starting from the same initial utterance, the Refiner re-synthesizes the speech to simultaneously convey the target emotion and apply a specified word-level prosodic edit (stress or pause insertion). Each row shares the same emotion; each column applies a different fine-grained control.",
+      "type": "emosp_table",
+      "text": "Listen closely, the same words can tell a very different story.",
+      "initial_audio": "samples/emosp/emosp_neutral_p07_r0.wav",
+      "controls": [
+        {"id": "stress_same", "label": "Stress 'same'", "short": "Stress 'same'"},
+        {"id": "stress_very", "label": "Stress 'very'", "short": "Stress 'very'"},
+        {"id": "pause_after-words", "label": "Pause after 'words'", "short": "Pause after 'words'"},
+        {"id": "pause_after-different", "label": "Pause after 'different'", "short": "Pause after 'different'"}
+      ],
+      "emotions": ["angry", "disgusted", "fearful", "happy", "sad", "surprised", "neutral"],
+      "grid": {
+        "neutral": {
+          "stress_same": "samples/emosp/emosp_stress_same_neutral_p07_r2.wav",
+          "stress_very": "samples/emosp/emosp_stress_very_neutral_p07_r3.wav",
+          "pause_after-words": "samples/emosp/emosp_pause_after-words_neutral_p07_r1.wav",
+          "pause_after-different": "samples/emosp/emosp_pause_after-different_neutral_p07_r3.wav"
+        },
+        "angry": {
+          "stress_same": "samples/emosp/emosp_stress_same_angry_p04_r3.wav",
+          "stress_very": "samples/emosp/emosp_stress_very_angry_p04_r3.wav",
+          "pause_after-words": "samples/emosp/emosp_pause_after-words_angry_p04_r2.wav",
+          "pause_after-different": "samples/emosp/emosp_pause_after-different_angry_p04_r1.wav"
+        },
+        "disgusted": {
+          "stress_same": "samples/emosp/emosp_stress_same_disgusted_p03_r0.wav",
+          "stress_very": "samples/emosp/emosp_stress_very_disgusted_p03_r2.wav",
+          "pause_after-words": "samples/emosp/emosp_pause_after-words_disgusted_p03_r1.wav",
+          "pause_after-different": "samples/emosp/emosp_pause_after-different_disgusted_p03_r3.wav"
+        },
+        "fearful": {
+          "stress_same": "samples/emosp/emosp_stress_same_fearful_p00_r2.wav",
+          "stress_very": "samples/emosp/emosp_stress_very_fearful_p00_r2.wav",
+          "pause_after-words": "samples/emosp/emosp_pause_after-words_fearful_p00_r0.wav",
+          "pause_after-different": "samples/emosp/emosp_pause_after-different_fearful_p00_r4.wav"
+        },
+        "happy": {
+          "stress_same": "samples/emosp/emosp_stress_same_happy_p00_r4.wav",
+          "stress_very": "samples/emosp/emosp_stress_very_happy_p00_r2.wav",
+          "pause_after-words": "samples/emosp/emosp_pause_after-words_happy_p00_r1.wav",
+          "pause_after-different": "samples/emosp/emosp_pause_after-different_happy_p00_r0.wav"
+        },
+        "sad": {
+          "stress_same": "samples/emosp/emosp_stress_same_sad_p04_r4.wav",
+          "stress_very": "samples/emosp/emosp_stress_very_sad_p04_r4.wav",
+          "pause_after-words": "samples/emosp/emosp_pause_after-words_sad_p04_r4.wav",
+          "pause_after-different": "samples/emosp/emosp_pause_after-different_sad_p04_r3.wav"
+        },
+        "surprised": {
+          "stress_same": "samples/emosp/emosp_stress_same_surprised_ps1_r1.wav",
+          "stress_very": "samples/emosp/emosp_stress_very_surprised_ps1_r3.wav",
+          "pause_after-words": "samples/emosp/emosp_pause_after-words_surprised_ps1_r2.wav",
+          "pause_after-different": "samples/emosp/emosp_pause_after-different_surprised_ps1_r3.wav"
+        }
+      }
+    },
+    {
+      "id": "sp_grid",
+      "title": "Speed & Pitch Control",
+      "description": "Beyond emotion and word-level edits, the Refiner also controls global prosodic attributes. From the same initial utterance, it produces 9 variants spanning 3 speed levels and 3 pitch levels while consistently applying the specified stress and pause.",
+      "type": "sp_grid",
+      "text": "Listen closely, the same words can tell a very different story.",
+      "instruction": "Speak at a {speed} speed and {pitch} pitch. Specifically, insert a pause after 'words' and stress the word 'very'.",
+      "initial_audio": "samples/emosp/emosp_neutral_p07_r0.wav",
+      "speeds": ["Slow", "Moderate", "Fast"],
+      "pitches": ["Low", "Moderate", "High"],
+      "grid": {
+        "Slow": {
+          "Low": "samples/emosp/sp_slow_low_r1.wav",
+          "Moderate": "samples/emosp/sp_slow_moderate_r2.wav",
+          "High": "samples/emosp/sp_slow_high_r4.wav"
+        },
+        "Moderate": {
+          "Low": "samples/emosp/sp_moderate_low_r1.wav",
+          "Moderate": "samples/emosp/sp_moderate_moderate_r4.wav",
+          "High": "samples/emosp/sp_moderate_high_r1.wav"
+        },
+        "Fast": {
+          "Low": "samples/emosp/sp_fast_low_r0.wav",
+          "Moderate": "samples/emosp/sp_fast_moderate_r1.wav",
+          "High": "samples/emosp/sp_fast_high_r3.wav"
+        }
+      }
+    },
+    {
+      "id": "refine",
+      "title": "Refinement with Instruction",
+      "description": "In the full LoopTTS pipeline, the AudioLLM Judge listens to the initial utterance, diagnoses prosodic defects, and automatically generates a structured refine instruction that may specify emotion, word-level stress/pause, speed, and pitch corrections. The Refiner then executes the instruction to produce the corrected speech while preserving speaker identity. Below are real Judge-generated instructions and the corresponding before/after pairs.",
+      "type": "refinement",
+      "samples": [
+        {
+          "id": "angry_SP",
+          "text": "Do you really believe your silence is more tolerable than an honest mistake?",
+          "instruction": "Speak with a Angry emotion at a fast speed and moderate pitch. Specifically, stress the word 'really', stress the word 'silence', and stress the word 'honest'.",
+          "before_audio": "samples/Refine_SP/angry_SP_before.wav",
+          "after_audio": "samples/Refine_SP/angry_SP_after.wav"
+        },
+        {
+          "id": "refine_14",
+          "text": "You expect me to eat this after seeing how it's prepared?",
+          "instruction": "Speak with a Disgusted emotion at a slow speed and low pitch. Specifically, stress the word 'You', stress the word 'this', insert a pause after 'this', and stress the word 'prepared'.",
+          "before_audio": "samples/refine_1/14_before.wav",
+          "after_audio": "samples/refine_1/14_after.wav"
+        },
+        {
+          "id": "refine_1",
+          "text": "I've told you 100 times—don't open the door at night.",
+          "instruction": "Speak with a Fearful emotion. Specifically, stress the word '100', insert a pause after 'times', stress the word 'don't', and stress the word 'night'.",
+          "before_audio": "samples/refine_1/1_before.wav",
+          "after_audio": "samples/refine_1/1_after.wav"
+        },
+        {
+          "id": "fearful_SP",
+          "text": "I—i swear i wasn't alone down there! You have to believe me this time.",
+          "instruction": "Speak with a Fearful emotion at a moderate speed and low pitch. Specifically, stress the word 'swear', insert a pause after 'swear', stress the word 'wasn't', insert a pause after 'there!', and stress the word 'believe'.",
+          "before_audio": "samples/Refine_SP/fearful_SP_before.wav",
+          "after_audio": "samples/Refine_SP/fearful_SP_after.wav"
+        },
+        {
+          "id": "refine_13",
+          "text": "You've got to see this—it's even better than we imagined!",
+          "instruction": "Speak with a Happy emotion. Specifically, stress the word 'got', insert a pause after 'this', stress the word 'even', and stress the word 'imagined'.",
+          "before_audio": "samples/refine_1/13_before.wav",
+          "after_audio": "samples/refine_1/13_after.wav"
+        },
+        {
+          "id": "refine_2",
+          "text": "The letter slipped from his grasp, a paper cut of bitter news.",
+          "instruction": "Speak with a Sad emotion at a low pitch. Specifically, stress the word 'slipped', insert a pause after 'grasp', and stress the word 'bitter'.",
+          "before_audio": "samples/refine_1/2_before.wav",
+          "after_audio": "samples/refine_1/2_after.wav"
+        },
+        {
+          "id": "sad_SP_1",
+          "text": "I know i messed up, but please don't leave—please.",
+          "instruction": "Speak with a Sad emotion at a slow speed and moderate pitch. Specifically, stress the word 'i', insert a pause after 'up', stress the word 'please', and insert a pause after 'leave'.",
+          "before_audio": "samples/Refine_SP/sad_SP_before_1.wav",
+          "after_audio": "samples/Refine_SP/sad_SP_after_1.wav"
+        },
+        {
+          "id": "refine_12",
+          "text": "Upon trying her hand at painting, she discovered a natural talent within her.",
+          "instruction": "Speak with a Surprised emotion at a slow speed. Specifically, stress the word 'painting', insert a pause after 'painting', stress the word 'natural', and stress the word 'talent'.",
+          "before_audio": "samples/refine_1/12_before.wav",
+          "after_audio": "samples/refine_1/12_after.wav"
+        },
+        {
+          "id": "refine_10",
+          "text": "I don't just understand you, Anne,' he said hesitatingly. 'You appear to be vexed about something.",
+          "instruction": "Speak at a fast speed. Specifically, stress the word 'understand', stress the word 'vexed', and insert a pause after 'Anne'.",
+          "before_audio": "samples/refine_1/10_before.wav",
+          "after_audio": "samples/refine_1/10_after.wav"
+        }
+      ]
+    }
+  ]
+}

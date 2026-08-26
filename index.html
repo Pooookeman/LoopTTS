@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="LoopTTS is a closed-loop TTS framework for AudioLLM-guided prosodic diagnosis and refinement.">
+    <meta name="theme-color" content="#ffffff">
+    <title>LoopTTS: Diagnose, Then Refine</title>
+    <link rel="icon" href="data:,">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ink: #172033;
+            --muted: #5e6879;
+            --line: #dce1e8;
+            --surface: #f6f8fa;
+            --blue: #1769e0;
+            --blue-soft: #eaf2ff;
+            --amber: #c76b00;
+            --amber-soft: #fff4df;
+            --green: #16794b;
+            --green-soft: #e8f7ef;
+            --red: #b84242;
+            --radius: 8px;
+        }
+        * { box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            margin: 0;
+            background: #ffffff;
+            color: var(--ink);
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            line-height: 1.65;
+            -webkit-font-smoothing: antialiased;
+        }
+        a { color: inherit; }
+        .container { width: min(1120px, calc(100% - 40px)); margin: 0 auto; }
+        .site-nav {
+            min-height: 60px;
+            border-bottom: 1px solid var(--line);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 24px;
+        }
+        .nav-brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; text-decoration: none; }
+        .nav-links { display: flex; align-items: center; gap: 22px; font-size: 0.88rem; font-weight: 600; }
+        .nav-links a { color: var(--muted); text-decoration: none; }
+        .nav-links a:hover { color: var(--ink); }
+        .hero { padding: 58px 0 46px; border-bottom: 1px solid var(--line); background: #ffffff; }
+        .hero-lockup { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+        .venue { margin: 0 0 9px; color: var(--blue); font-size: 0.78rem; font-weight: 700; text-transform: uppercase; }
+        h1 { margin: 0; max-width: 860px; font-size: clamp(2rem, 4vw, 3.35rem); line-height: 1.08; letter-spacing: 0; }
+        .paper-title { margin: 8px 0 0; color: #3f4959; font-size: 1.14rem; font-weight: 600; }
+        .tagline { margin: 0; max-width: 780px; color: var(--muted); font-size: 1.08rem; }
+        .authors { margin: 6px 0 0; font-size: 0.94rem; font-weight: 600; }
+        .affiliations { margin: -10px 0 0; color: var(--muted); font-size: 0.8rem; }
+        .hero-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 1px; }
+        .action {
+            min-height: 40px;
+            padding: 8px 14px;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #ffffff;
+            color: var(--ink);
+            font-size: 0.88rem;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .action.primary { background: var(--ink); border-color: var(--ink); color: #ffffff; }
+        .action:hover { border-color: #aab3c0; }
+        .action.primary:hover { background: #273249; }
+        .action svg { width: 17px; height: 17px; }
+        .summary-band { padding: 36px 0; background: var(--surface); border-bottom: 1px solid var(--line); }
+        .summary-grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 48px; align-items: start; }
+        .eyebrow { margin: 0 0 8px; color: var(--blue); font-size: 0.76rem; font-weight: 700; text-transform: uppercase; }
+        .summary-copy { margin: 0; color: #3f4959; font-size: 0.95rem; }
+        .release-list { display: grid; gap: 9px; }
+        .release-row { min-height: 42px; display: grid; grid-template-columns: 110px 1fr auto; gap: 12px; align-items: center; border-bottom: 1px solid var(--line); font-size: 0.84rem; }
+        .release-row:last-child { border-bottom: 0; }
+        .release-name { font-weight: 700; }
+        .release-note { color: var(--muted); }
+        .status { padding: 3px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
+        .status.available { color: var(--green); background: var(--green-soft); }
+        .status.soon { color: var(--amber); background: var(--amber-soft); }
+        main { padding: 42px 0 64px; }
+        .demo-heading { margin-bottom: 34px; }
+        .demo-heading h2 { margin: 0; font-size: 1.7rem; }
+        .demo-heading p { margin: 7px 0 0; color: var(--muted); font-size: 0.92rem; }
+        section { margin: 0 0 58px; }
+        section > h2 { margin: 0; padding-bottom: 10px; border-bottom: 1px solid var(--line); font-size: 1.25rem; }
+        .section-desc { margin: 10px 0 22px; color: var(--muted); font-size: 0.9rem; }
+        .target-text { margin-bottom: 16px; padding: 12px 16px; border-left: 3px solid var(--blue); background: var(--blue-soft); font-size: 0.94rem; }
+        .init-audio-bar { min-height: 54px; padding: 9px 13px; margin-bottom: 18px; border: 1px solid var(--line); border-radius: var(--radius); display: flex; align-items: center; gap: 14px; }
+        .init-label { min-width: 112px; color: var(--muted); font-size: 0.78rem; font-weight: 700; }
+        audio { width: 100%; min-width: 180px; height: 36px; }
+        .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
+        table { width: 100%; border-collapse: collapse; background: #ffffff; }
+        th, td { padding: 11px 12px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); text-align: center; vertical-align: middle; }
+        tr:last-child th, tr:last-child td { border-bottom: 0; }
+        th:last-child, td:last-child { border-right: 0; }
+        thead th { background: var(--surface); font-size: 0.78rem; font-weight: 700; }
+        tbody th { min-width: 100px; background: #fbfcfd; font-size: 0.8rem; text-transform: capitalize; }
+        td audio { min-width: 170px; }
+        .instruction { margin-bottom: 16px; padding: 11px 14px; border: 1px solid #f0d5ad; border-radius: var(--radius); background: #fffaf2; color: #6b4c23; font-size: 0.83rem; }
+        .speed { color: var(--green); font-weight: 700; }
+        .pitch { color: var(--blue); font-weight: 700; }
+        .sample-block { padding: 18px; margin-bottom: 14px; border: 1px solid var(--line); border-radius: var(--radius); }
+        .sample-text { margin: 0 0 10px; font-size: 0.96rem; font-weight: 600; }
+        .refine-row { display: grid; grid-template-columns: 1fr 34px 1fr; gap: 12px; align-items: center; }
+        .audio-label { margin-bottom: 6px; color: var(--muted); font-size: 0.75rem; font-weight: 700; }
+        .audio-label.after { color: var(--green); }
+        .arrow { color: var(--blue); text-align: center; }
+        .arrow svg { width: 20px; height: 20px; }
+        .loading { padding: 60px 0; color: var(--muted); text-align: center; }
+        .error { padding: 18px; border: 1px solid #eccaca; border-radius: var(--radius); color: var(--red); background: #fff7f7; }
+        footer { padding: 26px 0; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.8rem; }
+        .footer-inner { display: flex; justify-content: space-between; gap: 20px; }
+        footer a { color: var(--blue); text-decoration: none; }
+        @media (max-width: 760px) {
+            .container { width: min(100% - 28px, 1120px); }
+            .site-nav { min-height: 54px; }
+            .nav-links a:not(:last-child) { display: none; }
+            .hero { padding: 36px 0 32px; }
+            .hero-lockup { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+            h1 { font-size: 2rem; }
+            .authors { margin-top: 4px; }
+            .affiliations { margin-top: -8px; }
+            .summary-grid { grid-template-columns: 1fr; gap: 28px; }
+            .release-row { grid-template-columns: 90px 1fr; }
+            .release-row .status { grid-column: 2; justify-self: start; }
+            .init-audio-bar { align-items: flex-start; flex-direction: column; }
+            .refine-row { grid-template-columns: 1fr; }
+            .arrow { transform: rotate(90deg); }
+            .footer-inner { flex-direction: column; gap: 5px; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="container site-nav" aria-label="Project navigation">
+        <a class="nav-brand" href="#top"><span>LoopTTS</span></a>
+        <div class="nav-links">
+            <a href="#overview">Overview</a>
+            <a href="#demo">Demo</a>
+            <a href="https://github.com/Pooookeman/LoopTTS" target="_blank" rel="noreferrer">GitHub</a>
+        </div>
+    </nav>
+    <header class="hero" id="top">
+        <div class="container hero-lockup">
+            <div><p class="venue">ACL 2026</p><h1>LoopTTS</h1><p class="paper-title">Diagnose, Then Refine: A Closed-Loop TTS System with AudioLLM-Guided Correction</p></div>
+            <p class="tagline">LoopTTS is a closed-loop TTS system that uses an AudioLLM Judge to diagnose local prosodic defects and guide expressive re-synthesis.</p>
+            <p class="authors">Zeyang Song · Tianchi Liu · Tianrui Wang · Chenglin Xu · Yiwen Guo · Haizhou Li</p>
+            <p class="affiliations">National University of Singapore · LIGHTSPEED · Nanyang Technological University · CUHK-Shenzhen · Shenzhen Loop Area Institute</p>
+            <div class="hero-actions">
+                <a class="action primary" href="#demo"><i data-lucide="headphones"></i><span>Audio Demo</span></a>
+                <a class="action" href="paper/LoopTTS.pdf"><i data-lucide="file-text"></i><span>Paper</span></a>
+                <a class="action" href="https://github.com/Pooookeman/LoopTTS" target="_blank" rel="noreferrer"><i data-lucide="github"></i><span>Repository</span></a>
+            </div>
+        </div>
+    </header>
+    <section class="summary-band" id="overview">
+        <div class="container summary-grid">
+            <div>
+                <p class="eyebrow">Filter · Judge · Refiner</p>
+                <p class="summary-copy">Given an initial utterance, LoopTTS filters severe failures, identifies salient word-level prosodic issues, and produces structured instructions covering global emotion, speed, and pitch together with local stress and pause cues. A purpose-trained Refiner then performs guided re-synthesis conditioned on the original audio, target text, and instruction.</p>
+            </div>
+            <div class="release-list" id="release" aria-label="Release status">
+                <div class="release-row"><span class="release-name">Demo</span><span class="release-note">Interactive audio comparisons</span><span class="status available">Available</span></div>
+                <div class="release-row"><span class="release-name">Code</span><span class="release-note">Training and inference toolkit</span><span class="status soon">Coming soon</span></div>
+                <div class="release-row"><span class="release-name">Refiner-DB</span><span class="release-note">Prosody refinement dataset</span><span class="status soon">Coming soon</span></div>
+            </div>
+        </div>
+    </section>
+    <main class="container" id="demo">
+        <div class="demo-heading"><p class="eyebrow">Audio Samples</p><h2>Fine-grained prosody refinement</h2><p>Listen to global expressive control, local stress and pause control, and Judge-guided before/after refinement.</p></div>
+        <div id="content"><div class="loading">Loading samples…</div></div>
+    </main>
+    <footer><div class="container footer-inner"><span>LoopTTS · Diagnose, Then Refine</span><a href="https://github.com/Pooookeman/LoopTTS">github.com/Pooookeman/LoopTTS</a></div></footer>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+    <script>
+    (() => {
+        const escapeHtml = (text) => { const div = document.createElement('div'); div.textContent = text ?? ''; return div.innerHTML; };
+        const initAudio = (src) => { const bar = document.createElement('div'); bar.className = 'init-audio-bar'; bar.innerHTML = `<span class="init-label">Initial Utterance</span><audio controls preload="none" src="${escapeHtml(src)}"></audio>`; return bar; };
+        const renderEmotionTable = (category, index) => {
+            const section = document.createElement('section');
+            section.innerHTML = `<h2>${index + 1}. ${escapeHtml(category.title)}</h2><p class="section-desc">${escapeHtml(category.description)}</p><div class="target-text">“${escapeHtml(category.text)}”</div>`;
+            if (category.initial_audio) section.appendChild(initAudio(category.initial_audio));
+            const wrap = document.createElement('div'); wrap.className = 'table-wrap';
+            let html = '<table><thead><tr><th>Emotion</th>';
+            category.controls.forEach((control) => { html += `<th>${escapeHtml(control.short)}</th>`; }); html += '</tr></thead><tbody>';
+            category.emotions.forEach((emotion) => { html += `<tr><th>${escapeHtml(emotion)}</th>`; category.controls.forEach((control) => { const src = category.grid[emotion]?.[control.id]; html += src ? `<td><audio controls preload="none" src="${escapeHtml(src)}"></audio></td>` : '<td>—</td>'; }); html += '</tr>'; });
+            wrap.innerHTML = `${html}</tbody></table>`; section.appendChild(wrap); return section;
+        };
+        const renderSpeedPitch = (category, index) => {
+            const section = document.createElement('section');
+            section.innerHTML = `<h2>${index + 1}. ${escapeHtml(category.title)}</h2><p class="section-desc">${escapeHtml(category.description)}</p><div class="target-text">“${escapeHtml(category.text)}”</div>`;
+            const instruction = document.createElement('div'); instruction.className = 'instruction'; instruction.innerHTML = `<strong>Refine instruction:</strong> ${escapeHtml(category.instruction).replace('{speed}', '<span class="speed">{speed}</span>').replace('{pitch}', '<span class="pitch">{pitch}</span>')}`; section.appendChild(instruction);
+            if (category.initial_audio) section.appendChild(initAudio(category.initial_audio));
+            const wrap = document.createElement('div'); wrap.className = 'table-wrap'; let html = '<table><thead><tr><th>Speed ↓ / Pitch →</th>';
+            category.pitches.forEach((pitch) => { html += `<th>${escapeHtml(pitch)}</th>`; }); html += '</tr></thead><tbody>';
+            category.speeds.forEach((speed) => { html += `<tr><th>${escapeHtml(speed)}</th>`; category.pitches.forEach((pitch) => { const src = category.grid[speed]?.[pitch]; html += src ? `<td><audio controls preload="none" src="${escapeHtml(src)}"></audio></td>` : '<td>—</td>'; }); html += '</tr>'; });
+            wrap.innerHTML = `${html}</tbody></table>`; section.appendChild(wrap); return section;
+        };
+        const renderRefinement = (category, index) => {
+            const section = document.createElement('section'); section.innerHTML = `<h2>${index + 1}. ${escapeHtml(category.title)}</h2><p class="section-desc">${escapeHtml(category.description)}</p>`;
+            category.samples.forEach((sample) => { const block = document.createElement('article'); block.className = 'sample-block'; block.innerHTML = `<p class="sample-text">${escapeHtml(sample.text)}</p><div class="instruction"><strong>Refine instruction:</strong> ${escapeHtml(sample.instruction)}</div><div class="refine-row"><div><div class="audio-label">Before Refinement</div><audio controls preload="none" src="${escapeHtml(sample.before_audio)}"></audio></div><div class="arrow"><i data-lucide="arrow-right"></i></div><div><div class="audio-label after">After Refinement</div><audio controls preload="none" src="${escapeHtml(sample.after_audio)}"></audio></div></div>`; section.appendChild(block); }); return section;
+        };
+        fetch('samples.json').then((response) => { if (!response.ok) throw new Error('samples.json could not be loaded'); return response.json(); }).then((data) => {
+            const content = document.getElementById('content'); content.innerHTML = '';
+            data.categories.forEach((category, index) => { if (category.type === 'emosp_table') content.appendChild(renderEmotionTable(category, index)); if (category.type === 'sp_grid') content.appendChild(renderSpeedPitch(category, index)); if (category.type === 'refinement') content.appendChild(renderRefinement(category, index)); });
+            window.lucide?.createIcons();
+        }).catch((error) => { document.getElementById('content').innerHTML = `<div class="error">${escapeHtml(error.message)}</div>`; });
+        window.lucide?.createIcons();
+    })();
+    </script>
+</body>
+</html>
