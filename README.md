@@ -6,7 +6,7 @@
 
 **EMNLP 2026 Main Conference**
 
-[Paper](paper/LoopTTS.pdf) · [Audio Demo](https://pooookeman.github.io/LoopTTS/) · Code (Coming Soon) · Dataset (Coming Soon)
+[Paper](paper/LoopTTS.pdf) · [Audio Demo](https://pooookeman.github.io/LoopTTS/) · Training (Coming Soon) · Dataset (Coming Soon)
 
 </div>
 
@@ -26,7 +26,6 @@ The refine instruction combines global attributes such as emotion, speed, and pi
 |---|---|---|
 | Paper | Available | [PDF](paper/LoopTTS.pdf) |
 | Audio demo | Available | [Project page](https://pooookeman.github.io/LoopTTS/) |
-| Inference code | Coming soon | This repository |
 | Training framework | Coming soon | This repository |
 | Refiner-DB | Coming soon | Hugging Face |
 | Model checkpoints | Coming soon | Hugging Face |
@@ -40,9 +39,9 @@ The [project page](https://pooookeman.github.io/LoopTTS/) contains examples of:
 - AudioLLM-generated refine instructions;
 - before/after refinement comparisons from the full LoopTTS pipeline.
 
-## Code and Models
+## Training Framework
 
-The inference code, training framework, configuration files, and Refiner checkpoints are being organized for release. They will be added to this repository without changing the project URL.
+The Refiner training framework and configuration files are being organized for release. They will be added to this repository without changing the project URL.
 
 ## Refiner-DB
 
