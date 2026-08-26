@@ -73,6 +73,8 @@
         .action.primary { background: var(--ink); border-color: var(--ink); color: #ffffff; }
         .action:hover { border-color: #aab3c0; }
         .action.primary:hover { background: #273249; }
+        .action.disabled { color: var(--muted); background: var(--surface); cursor: default; }
+        .action.disabled:hover { border-color: var(--line); }
         .action svg { width: 17px; height: 17px; }
         .summary-band { padding: 36px 0; background: var(--surface); border-bottom: 1px solid var(--line); }
         .summary-grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 48px; align-items: start; }
@@ -152,7 +154,7 @@
             <p class="tagline">LoopTTS is a closed-loop TTS system that uses an AudioLLM Judge to diagnose local prosodic defects and guide expressive re-synthesis.</p>
             <div class="hero-actions">
                 <a class="action primary" href="#demo"><i data-lucide="headphones"></i><span>Audio Demo</span></a>
-                <a class="action" href="paper/LoopTTS.pdf"><i data-lucide="file-text"></i><span>Paper</span></a>
+                <span class="action disabled" aria-disabled="true"><i data-lucide="file-text"></i><span>Paper Soon</span></span>
                 <a class="action" href="https://github.com/Pooookeman/LoopTTS" target="_blank" rel="noreferrer"><i data-lucide="github"></i><span>Repository</span></a>
             </div>
         </div>
