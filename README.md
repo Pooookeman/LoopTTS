@@ -28,7 +28,6 @@ The refine instruction combines global attributes such as emotion, speed, and pi
 | Audio demo | Available | [Project page](https://pooookeman.github.io/LoopTTS/) |
 | Training framework | Coming soon | This repository |
 | Refiner-DB | Coming soon | Hugging Face |
-| Model checkpoints | Coming soon | Hugging Face |
 
 ## Audio Demo
 
