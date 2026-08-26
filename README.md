@@ -6,7 +6,10 @@
 
 **EMNLP 2026 Main Conference**
 
-[Paper](paper/LoopTTS.pdf) · [Audio Demo](https://pooookeman.github.io/LoopTTS/) · Training (Coming Soon) · Dataset (Coming Soon)
+<img alt="Paper coming soon" src="https://img.shields.io/badge/Paper-Coming_Soon-6B7280?style=flat-square">
+<a href="https://pooookeman.github.io/LoopTTS/"><img alt="Audio Demo" src="https://img.shields.io/badge/Audio_Demo-Listen-2F855A?style=flat-square&logo=githubpages&logoColor=white"></a>
+<img alt="Training coming soon" src="https://img.shields.io/badge/Training-Coming_Soon-6B7280?style=flat-square">
+<img alt="Dataset coming soon" src="https://img.shields.io/badge/Dataset-Coming_Soon-6B7280?style=flat-square">
 
 </div>
 
@@ -24,7 +27,7 @@ The refine instruction combines global attributes such as emotion, speed, and pi
 
 | Resource | Status | Link |
 |---|---|---|
-| Paper | Available | [PDF](paper/LoopTTS.pdf) |
+| Paper | Coming soon | arXiv |
 | Audio demo | Available | [Project page](https://pooookeman.github.io/LoopTTS/) |
 | Training framework | Coming soon | This repository |
 | Refiner-DB | Coming soon | Hugging Face |
