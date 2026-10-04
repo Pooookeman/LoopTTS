@@ -31,6 +31,8 @@ The refine instruction combines global attributes such as emotion, speed, and pi
 | Audio demo | Available | [Project page](https://pooookeman.github.io/LoopTTS/) |
 | Training framework | Coming soon | This repository |
 | Refiner-DB | Available | [Hugging Face dataset](https://huggingface.co/datasets/Poookeman/Refiner-DB) |
+| Refiner inference | Available | [Instructions](inference/README.md) |
+| Refiner checkpoint | Available | [Hugging Face model](https://huggingface.co/Poookeman/LoopTTS-Refiner-1.5B) |
 
 ## Audio Demo
 
@@ -44,6 +46,10 @@ The [project page](https://pooookeman.github.io/LoopTTS/) contains examples of:
 ## Training Framework
 
 The Refiner training framework and configuration files are being organized for release. They will be added to this repository without changing the project URL.
+
+## Refiner Inference
+
+The [Refiner inference release](inference/README.md) provides a cleaned-up command for refining a WAV from its transcript and a prosody instruction. It includes the exact code changes used with the [1.5B checkpoint](https://huggingface.co/Poookeman/LoopTTS-Refiner-1.5B). This release covers the Refiner stage only.
 
 ## Refiner-DB
 
@@ -64,4 +70,4 @@ The dataset card documents the fields, audio archives, download and extraction s
 
 ## License
 
-Refiner-DB is released under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) for noncommercial use. See the [dataset card](https://huggingface.co/datasets/Poookeman/Refiner-DB) for terms and source acknowledgments. Code and model licenses will be specified with their respective releases.
+The released Refiner inference code, patch, checkpoint, and Refiner-DB are licensed under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) for noncommercial use. Upstream dependencies retain their original licenses. See the [dataset card](https://huggingface.co/datasets/Poookeman/Refiner-DB) and [model card](https://huggingface.co/Poookeman/LoopTTS-Refiner-1.5B) for details.

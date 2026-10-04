@@ -1,2 +1,8 @@
 samples/refine/
 .DS_Store
+third_party/
+models/
+inputs/
+runs/
+.venv/
+__pycache__/

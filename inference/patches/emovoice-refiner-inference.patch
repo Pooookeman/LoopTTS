@@ -1,0 +1,538 @@
+diff --git a/examples/tts/generate_tts_batch.py b/examples/tts/generate_tts_batch.py
+index 0e8738c..ff99190 100644
+--- a/examples/tts/generate_tts_batch.py
++++ b/examples/tts/generate_tts_batch.py
+@@ -1,4 +1,5 @@
+ import os
++import json
+ import time
+ import random
+ import logging
+@@ -114,6 +115,11 @@ def main(kwargs: DictConfig):
+ 	if not os.path.exists(tone_audio_dir) and not (output_text_only or decode_config.decode_text_only):
+ 		os.makedirs(tone_audio_dir)
+ 
++	# Create directory for saving predicted audio tokens
++	tone_token_dir = os.path.join(decode_log_dir, "pred_tokens", tone_dir)
++	if not os.path.exists(tone_token_dir) and not (output_text_only or decode_config.decode_text_only):
++		os.makedirs(tone_token_dir)
++
+ 	logger.info("decode_config: {}".format(decode_config))	
+ 	if decode_config.do_sample:
+ 		logger.info("Decode Strategy: Sampling")
+@@ -139,7 +145,16 @@ def main(kwargs: DictConfig):
+ 			for key in batch.keys():
+ 				batch[key] = batch[key].to(device) if isinstance(batch[key], torch.Tensor) else batch[key]
+ 
+-			audio_prompt_path = batch["neutral_speaker_wav"][0]
++			is_refine = dataset_config.get("tts_refine", False)
++			is_instruct = dataset_config.get("use_instruct", False) or kwargs.get("instruct_mode", False)
++			audio_prompt_path = None
++			if is_refine or is_instruct:
++				if "raw_wav" in batch and batch["raw_wav"] and batch["raw_wav"][0]:
++					audio_prompt_path = batch["raw_wav"][0]
++				elif "neutral_speaker_wav" in batch and batch["neutral_speaker_wav"] and batch["neutral_speaker_wav"][0]:
++					audio_prompt_path = batch["neutral_speaker_wav"][0]
++			else:
++				audio_prompt_path = batch["neutral_speaker_wav"][0]
+ 
+ 			start_time = time.time()
+ 			if modeling_paradigm == "parallel" or modeling_paradigm == "interleaved":
+@@ -198,7 +213,20 @@ def main(kwargs: DictConfig):
+ 				RTF_llm = (end_time_llm - start_time) / audio_length
+ 				logger.info(f"LLM RTF: {RTF_llm:.2f}")
+ 
++				# Save predicted audio tokens (the tokens that correspond to answer_cosyvoice_speech_token during training)
++				token_data = {}
++				for layer_idx in range(code_layer):
++					layer_tokens = audio_outputs[layer_idx]
++					if isinstance(layer_tokens, torch.Tensor):
++						token_data[f"layer_{layer_idx}"] = layer_tokens.cpu().tolist()
++					else:
++						token_data[f"layer_{layer_idx}"] = layer_tokens
++				token_data["code_layer"] = code_layer
++				with open(f"{tone_token_dir}/{key}.json", "w") as tf:
++					json.dump(token_data, tf)
++				logger.info(f"Saved predicted tokens: pred_tokens/{tone_dir}/{key}.json")
++
+ 	logger.info("============== Inference Finished ==============")
+ 
+ if __name__ == "__main__":
+-	main_hydra()
+\ No newline at end of file
++	main_hydra()
+diff --git a/examples/tts/inference_tts.py b/examples/tts/inference_tts.py
+index 3af9461..6c59a03 100644
+--- a/examples/tts/inference_tts.py
++++ b/examples/tts/inference_tts.py
+@@ -43,12 +43,15 @@ class RunConfig:
+     multi_round: bool = field(
+         default=False, metadata={"help": "Multi-round inference"}
+     )
++    tts_refine: bool = field(default=False, metadata={"help": "Enable TTS refinement mode (uses raw+refined audio tokens)."})
+ 
+ 
+ @hydra.main(config_name=None, version_base=None)
+ def main_hydra(cfg: DictConfig):
+     run_config = RunConfig()
+     cfg = OmegaConf.merge(run_config, cfg)
++    if cfg.get("tts_refine", False):
++        cfg.dataset_config.tts_refine = True
+     log_level = getattr(logging, cfg.get("log_level", "INFO").upper())
+ 
+     logging.basicConfig(level=log_level)
+diff --git a/examples/tts/model/slam_model_tts.py b/examples/tts/model/slam_model_tts.py
+index 37c717a..cfb52e6 100644
+--- a/examples/tts/model/slam_model_tts.py
++++ b/examples/tts/model/slam_model_tts.py
+@@ -216,7 +216,8 @@ class slam_model_tts(slam_model):
+                     xa.append(x_ori[..., text_vocab_size + audio_vocab_size * i : text_vocab_size + audio_vocab_size * (i + 1)])
+ 
+             loss_recorder = []
+-            total_loss, loss_recorder = self.compute_parallel_loss(xt, text_labels, xa, audio_labels)
++            prosody_mask = kwargs.get("prosody_mask", None)
++            total_loss, loss_recorder = self.compute_parallel_loss(xt, text_labels, xa, audio_labels, prosody_mask=prosody_mask)
+             model_outputs.loss = total_loss
+         elif self.train_config.modeling_paradigm == "interleaved":
+             x_ori = model_outputs.logits
+@@ -254,29 +255,88 @@ class slam_model_tts(slam_model):
+ 
+         return model_outputs, text_acc, audio_acc, loss_recorder
+ 
+-    def compute_parallel_loss(self, xt, text_labels, xa, audio_labels):
++    def compute_parallel_loss(self, xt, text_labels, xa, audio_labels, prosody_mask=None):
+         """
+         Compute the parallel loss for text and audio layers.
++        
++        When prosody_mask is provided (from prosody-annotated data):
++          - Shape: [batch, code_layer, seq_len] with values 0/1/2
++          - 0 = normal (weight 1.0), 1 = stress (weight 1.0+α), 2 = pause (weight 1.0+β)
++          - α, β are small (0.2~0.5) to provide a gentle bias without dominating
++          - Uses per-token weighted CE instead of mean-reduced CE for audio layers
++        
++        When prosody_mask is None or all-zero, behavior is identical to the original.
+         """
+         text_vocab_size = self.model_config.vocab_config.padded_text_vocabsize
+         audio_vocab_size = self.model_config.vocab_config.padded_audio_vocabsize
+         layer_loss = [0 for _ in range(self.code_layer+1) ] 
+-        
++
++        # Prosody weight config (soft boost, not dominant)
++        prosody_stress_weight = getattr(self.model_config, 'prosody_stress_weight', 0.3)
++        prosody_pause_weight = getattr(self.model_config, 'prosody_pause_weight', 0.3)
++
++        # Check whether text_labels contain real targets or are all pad_t
++        pad_t = self.model_config.vocab_config.pad_t
++        has_real_text_target = False
+         if text_labels is not None:
++            valid_mask = (text_labels != -100)
++            if valid_mask.any():
++                has_real_text_target = not (text_labels[valid_mask] == pad_t).all()
++
++        if text_labels is not None and has_real_text_target:
+             text_loss = F.cross_entropy(xt[:, :-1, :].reshape(-1, text_vocab_size), text_labels[:, 1:].reshape(-1), ignore_index=-100)
+             layer_loss[self.code_layer] = text_loss
+         else:
+             text_loss = 0
+ 
+         total_audio_loss = 0
+-        single_audio_loss = 0
+         for i in range(self.code_layer):
+             if audio_labels[:,i] is not None:
+-                single_audio_loss = F.cross_entropy(xa[i][:, :-1, :].reshape(-1, audio_vocab_size), audio_labels[:, i, 1:].reshape(-1), ignore_index=-100)
++                layer_labels = audio_labels[:, i, 1:].reshape(-1)  # [B*T]
++                layer_logits = xa[i][:, :-1, :].reshape(-1, audio_vocab_size)  # [B*T, V]
++
++                # Check if we have a valid prosody mask for this layer
++                use_prosody = (prosody_mask is not None 
++                               and prosody_mask.shape[1] > i 
++                               and prosody_mask.any())
++
++                if use_prosody:
++                    # prosody_mask shape: [B, code_layer, answer_len]
++                    # We need to align with the shifted labels (1: offset)
++                    layer_pm = prosody_mask[:, i, 1:]  # [B, T]
++                    # Trim or pad to match label length
++                    T = audio_labels.shape[2] - 1  # after shift
++                    if layer_pm.shape[1] < T:
++                        layer_pm = F.pad(layer_pm, (0, T - layer_pm.shape[1]))
++                    else:
++                        layer_pm = layer_pm[:, :T]
++                    layer_pm = layer_pm.reshape(-1)  # [B*T]
++
++                    # Build per-token weight: 1.0 + α*(stress) + β*(pause)
++                    token_weight = torch.ones_like(layer_pm, dtype=layer_logits.dtype)
++                    token_weight = token_weight + prosody_stress_weight * (layer_pm == 1).float()
++                    token_weight = token_weight + prosody_pause_weight * (layer_pm == 2).float()
++
++                    # Per-token CE loss (no reduction)
++                    per_token_loss = F.cross_entropy(
++                        layer_logits, layer_labels, 
++                        ignore_index=-100, reduction='none')
++                    
++                    # Mask out ignored positions from weight too
++                    valid = (layer_labels != -100)
++                    weighted_loss = (per_token_loss * token_weight * valid.float()).sum()
++                    normalizer = (token_weight * valid.float()).sum().clamp(min=1.0)
++                    single_audio_loss = weighted_loss / normalizer
++                else:
++                    single_audio_loss = F.cross_entropy(
++                        layer_logits, layer_labels, ignore_index=-100)
++
+                 layer_loss[i] = single_audio_loss
+                 total_audio_loss += single_audio_loss
+ 
+-        total_loss = (text_loss + total_audio_loss) / (self.code_layer+1)
++        # Dynamic denominator: only count text when it has real targets
++        denominator = self.code_layer + (1 if has_real_text_target else 0)
++        total_loss = (text_loss + total_audio_loss) / denominator
+         return total_loss, layer_loss
+ 
+ 
+diff --git a/examples/tts/speech_dataset_tts.py b/examples/tts/speech_dataset_tts.py
+index b88af19..a5b6871 100644
+--- a/examples/tts/speech_dataset_tts.py
++++ b/examples/tts/speech_dataset_tts.py
+@@ -17,12 +17,15 @@ class SpeechDatasetJsonl(torch.utils.data.Dataset):
+         
+         self.IGNORE_INDEX = -100  # The default setting in CrossEntropyLoss
+         self.use_emo = dataset_config.get("use_emo", False)
++        self.use_instruct = dataset_config.get("use_instruct", False)
+         self.en_dataset = dataset_config.get("en_dataset", False)
+         self.prompt_template = "<SYSTEM>: {}\n "
+         self.answer_template = "{}"
+         self.inference_mode = dataset_config.get("inference_mode", False)
+         self.seed = dataset_config.get("seed", 42)
+         self.modeling_paradigm = dataset_config.get("modeling_paradigm", "parallel")
++        self.tts_refine = dataset_config.get("tts_refine", False)
++        self.raw_audio_position = dataset_config.get("raw_audio_position", "middle")  # "middle" (new) or "end" (old)
+         self.interleaved_text_token_num = dataset_config.get("interleaved_text_token_num", 12)
+         self.interleaved_audio_token_num = dataset_config.get("interleaved_audio_token_num", 36)
+         assert self.modeling_paradigm in ["parallel", "interleaved", "serial"], "modeling_paradigm must be one of [parallel, interleaved]"
+@@ -80,6 +83,12 @@ class SpeechDatasetJsonl(torch.utils.data.Dataset):
+         return len(self.data_list)
+ 
+     def extract_audio_feature(self, audio_path):
++        # """
++        # Convert ground-truth audio tokens. When no target tokens are provided
++        # (inference-only JSONL), return an empty tensor and zero length.
++        # """
++        # if audio_path is None or audio_path == []:
++        #     return torch.zeros(0, dtype=torch.long), 0
+         audio_tokens = audio_path
+         if self.code_layer <= 1:
+             audio_res, audio_length = get_single_layer_answer_token(audio_tokens, self.num_latency_tokens, self._pad_a, self._eoa)
+@@ -177,31 +186,57 @@ class SpeechDatasetJsonl(torch.utils.data.Dataset):
+         key = None
+         audio_length = 0
+         target_audio_length = 0
++        raw_audio_length = 0
+ 
+         source_audio = data_dict.get("source_wav", None)
+-        target_audio = data_dict.get("answer_cosyvoice_speech_token", None)
++        target_audio_field = data_dict.get("refined_audio_token" if (self.tts_refine or self.use_instruct) else "answer_cosyvoice_speech_token", None)
++        target_audio = target_audio_field
+         source_text = data_dict.get("source_text", None)
+         target_text = data_dict.get("target_text", None)
+         key = data_dict.get("key", None)
+         neutral_speaker_wav = data_dict.get("neutral_speaker_wav", None)
++        raw_wav = data_dict.get("raw_wav", None)
++        suggestion = data_dict.get("suggestion", "")
++        raw_audio = None
+ 
+         target_audio, target_audio_length = self.extract_audio_feature(target_audio)
+ 
++        # Read prosody_mask from JSONL (flat, per-token: 0=normal, 1=stress, 2=pause)
++        # Split into per-layer masks matching get_group_answer_token logic: flat[layer::code_layer]
++        prosody_mask_flat = data_dict.get("prosody_mask", None)
++
++        if self.tts_refine:
++            raw_audio_tokens = data_dict.get("raw_audio_token", None)
++            if raw_audio_tokens is not None:
++                raw_audio, raw_audio_length = self.extract_audio_feature(raw_audio_tokens)
++
+         prompt="Say this sentence. "
+-        if self.use_emo:
++        if self.tts_refine:
++            # prompt = "Refine the given speech per instruction: {}. Target text: {}. ".format(suggestion, target_text if target_text is not None else "")
++            suggestion = re.sub(r'[。！？\.,!\?]$', '', suggestion)
++            suggestion = re.sub(r'\.(?=.)', ',', suggestion)
++            prompt = suggestion
++        elif self.use_emo:
+             if "emotion_text_prompt" in data_dict:
+                 emotion_text_prompt = data_dict.get("emotion_text_prompt" , None)
+                 emotion_text_prompt = re.sub(r'[。！？\.,!\?]$', '', emotion_text_prompt)
+                 emotion_text_prompt = re.sub(r'\.(?=.)', ',', emotion_text_prompt)
+                 prompt = "Say this sentence with emotion of {}. ".format(emotion_text_prompt)
+-  
++                # prompt = "Say this sentence following this speaking style: {}. ".format(emotion_text_prompt)
++        elif self.use_instruct:
++            # prompt = "Follow this instruction: {}. Target text: {}. ".format(suggestion, target_text if target_text is not None else (source_text if source_text is not None else ""))
++            suggestion = re.sub(r'[。！？\.,!\?]$', '', suggestion)
++            suggestion = re.sub(r'\.(?=.)', ',', suggestion)
++            prompt = suggestion
++            
+         prompt = self.prompt_template.format(prompt) #'<SYSTEM>: 请说这句话. \n '
+         prompt_ids = self.tokenizer.encode(prompt)
+         prompt_ids = [self._input_t] + prompt_ids + [self._eot]
+         prompt_length = len(prompt_ids)
+         prompt_ids = self.get_padded_input(prompt_ids, prompt_length)
+ 
+-        target_text_ids = self.tokenizer.encode(source_text)
++        base_text = source_text if source_text is not None else target_text
++        target_text_ids = self.tokenizer.encode(base_text)
+         target_text_length = len(target_text_ids)
+         target_text_ids = torch.tensor(target_text_ids, dtype=torch.int64)
+         example_ids = self.get_input_ids(target_text_length, self.special_token_a, self.special_token_t) # <prompt> <bos> <text> <eos> <task>
+@@ -209,12 +244,34 @@ class SpeechDatasetJsonl(torch.utils.data.Dataset):
+         text_layer = torch.cat((text_layer[:,:1], target_text_ids.unsqueeze(0), text_layer[:,-2:]), dim=1)
+         example_ids[self.code_layer] = text_layer
+         example_ids = [torch.cat((prompt_ids[i], example_ids[i]), dim = 1) for i in range(self.code_layer + 1)]
++        # Insert raw audio tokens when in tts_refine mode.
++        # raw_audio_position="middle": [prompt] + [raw_audio] + [text] -> [answer]  (Proposal 4, new)
++        # raw_audio_position="end":    [prompt] + [text] + [raw_audio] -> [answer]  (old format)
++        if self.tts_refine and raw_audio is not None and raw_audio_length > 0:
++            raw_ids = []
++            for i in range(self.code_layer):
++                shifted_raw = self.layershift(raw_audio[i], i)
++                raw_ids.append(shifted_raw.unsqueeze(0))
++            raw_text_pad = torch.full((1, raw_audio.shape[1]), self._pad_t, dtype=torch.long)
++            raw_ids.append(raw_text_pad)
++
++            if self.raw_audio_position == "middle":
++                # [prompt] + [raw_audio] + [text_input]
++                for i in range(self.code_layer + 1):
++                    prompt_part = example_ids[i][:, :prompt_length]
++                    text_part = example_ids[i][:, prompt_length:]
++                    example_ids[i] = torch.cat((prompt_part, raw_ids[i], text_part), dim=1)
++            else:
++                # [prompt] + [text_input] + [raw_audio]  (old format)
++                for i in range(self.code_layer + 1):
++                    example_ids[i] = torch.cat((example_ids[i], raw_ids[i]), dim=1)
+         if self.modeling_paradigm == "serial":
+             only_text_layer = example_ids[self.code_layer]
+             example_ids = []
+             for i in range(self.code_layer):
+                 example_ids.append(only_text_layer) 
+         input_length = target_text_length
++        audio_length = raw_audio_length + target_audio_length
+         
+         if self.inference_mode:
+             example_mask = example_ids[0][0].ge(-1)  # [True,True]
+@@ -226,14 +283,17 @@ class SpeechDatasetJsonl(torch.utils.data.Dataset):
+                 "audio_length": audio_length,
+                 "target_audio": target_audio,
+                 "target_audio_length": target_audio_length,
++                "raw_audio_length": raw_audio_length,
+                 "key": key,
+                 "source_text": source_text,
+                 "target_text": target_text,
+                 "prompt_length": prompt_length,
+                 "neutral_speaker_wav": neutral_speaker_wav,
++                "raw_wav": raw_wav,
+             }
+ 
+-        answer_text = self.answer_template.format(target_text)
++        answer_text_content = target_text if target_text is not None else base_text
++        answer_text = self.answer_template.format(answer_text_content)
+         answer_text_ids = self.tokenizer.encode(answer_text)  # [answer]
+         answer_text_ids.append(self._eot) # [answer,eos]
+         answer_text_ids = torch.tensor(answer_text_ids, dtype=torch.int64)
+@@ -258,7 +318,8 @@ class SpeechDatasetJsonl(torch.utils.data.Dataset):
+ 
+             example_ids = torch.stack(example_ids).squeeze()
+             labels_ids = torch.stack(labels_ids).squeeze()
+-            labels_ids[:,:input_length + prompt_length + 3] = -1  # [-1,-1,answer,eos]; NOTE: here 3 include <bos> <eos> <ans_t>
++            prefix_ignore = input_length + prompt_length + raw_audio_length + 3
++            labels_ids[:,:prefix_ignore] = -1  # [-1,-1,answer,eos]; NOTE: here 3 include <bos> <eos> <ans_t>
+ 
+             if text_padding_length > 0:
+                 labels_ids[self.code_layer,-text_padding_length:] = -1   # [-1,-1,answer_text,eos,-1]
+@@ -285,7 +346,8 @@ class SpeechDatasetJsonl(torch.utils.data.Dataset):
+ 
+             example_ids = torch.stack(example_ids).squeeze(1)
+             labels_ids = torch.stack(whole_labels_ids).squeeze(1)
+-            labels_ids[:,:input_length + prompt_length + 3] = -1  # [-1,-1,answer,eos]; NOTE: here 3 include <bos> <eos> <ans_t>
++            prefix_ignore = input_length + prompt_length + raw_audio_length + 3
++            labels_ids[:,:prefix_ignore] = -1  # [-1,-1,answer,eos]; NOTE: here 3 include <bos> <eos> <ans_t>
+     
+         elif self.modeling_paradigm == "interleaved":
+             target_audio = target_audio.squeeze(0)
+@@ -296,7 +358,8 @@ class SpeechDatasetJsonl(torch.utils.data.Dataset):
+ 
+             example_ids = torch.cat((example_ids, torch.tensor(interleaved_sequence).unsqueeze(0)), dim=1)
+             labels_ids = example_ids.clone()
+-            labels_ids[:,:input_length + prompt_length + 3] = -1  # [-1,-1,answer,eos]; NOTE: here 3 include <bos> <eos> <ans_t>
++            prefix_ignore = input_length + prompt_length + raw_audio_length + 3
++            labels_ids[:,:prefix_ignore] = -1  # [-1,-1,answer,eos]; NOTE: here 3 include <bos> <eos> <ans_t>
+ 
+ 
+         example_mask = example_ids[0].ge(-1)  # [True,True,True,True]
+@@ -304,6 +367,37 @@ class SpeechDatasetJsonl(torch.utils.data.Dataset):
+         label_mask = labels_ids.ge(0)  # [False,False,True,True]
+         labels_ids[~label_mask] = self.IGNORE_INDEX  # [-100,-100,answer,eos]
+ 
++        # Build per-layer prosody_mask aligned with audio labels
++        # audio labels shape: [code_layer, answer_length] (after padding)
++        # prosody_mask should be [code_layer, answer_length] with same alignment
++        if prosody_mask_flat is not None and len(prosody_mask_flat) > 0 and self.code_layer > 1:
++            # Pad flat mask to be divisible by code_layer (same as get_group_answer_token)
++            padded_flat = prosody_mask_flat + [0]  # +1 for eoa token
++            pad_needed = (self.code_layer - len(padded_flat) % self.code_layer) % self.code_layer
++            padded_flat = padded_flat + [0] * pad_needed
++            # Split per layer: flat[layer::code_layer], prepend num_latency_tokens zeros
++            layer_masks = []
++            for layer in range(self.code_layer):
++                lm = [0] * self.num_latency_tokens + padded_flat[layer::self.code_layer]
++                layer_masks.append(torch.tensor(lm, dtype=torch.long))
++            prosody_mask_tensor = torch.stack(layer_masks)  # [code_layer, audio_length_per_layer]
++            # Pad to match answer_length
++            if self.modeling_paradigm == "parallel":
++                answer_length = max(len(answer_text_ids), target_audio_length)
++                if prosody_mask_tensor.shape[1] < answer_length:
++                    pad_len = answer_length - prosody_mask_tensor.shape[1]
++                    prosody_mask_tensor = torch.cat([prosody_mask_tensor, 
++                        torch.zeros(self.code_layer, pad_len, dtype=torch.long)], dim=1)
++                else:
++                    prosody_mask_tensor = prosody_mask_tensor[:, :answer_length]
++        else:
++            # No prosody mask or single layer: all zeros
++            if self.modeling_paradigm == "parallel":
++                answer_length = max(len(answer_text_ids), target_audio_length)
++                prosody_mask_tensor = torch.zeros(self.code_layer, answer_length, dtype=torch.long)
++            else:
++                prosody_mask_tensor = None
++
+         return {
+             "input_ids": example_ids,
+             "labels": labels_ids,
+@@ -312,10 +406,12 @@ class SpeechDatasetJsonl(torch.utils.data.Dataset):
+             "audio_length": audio_length,
+             "target_audio": target_audio,
+             "target_audio_length": target_audio_length,
++            "raw_audio_length": raw_audio_length,
+             "key": key,
+             "source_text": source_text,
+             "target_text": target_text,
+             "prompt_length": prompt_length,
++            "prosody_mask": prosody_mask_tensor,
+         }
+ 
+     def pad(self, sequence, max_length, padding_idx=0):
+@@ -377,8 +473,9 @@ class SpeechDatasetJsonl(torch.utils.data.Dataset):
+ 
+     def collator(self, samples):
+         assert samples is not None 
+-        input_prompt_lengths = [s["input_length"] + s['prompt_length'] + 3 for s in samples]
+-        input_answer_lengths = [len(s["input_ids"][0]) - s["input_length"] - s['prompt_length'] - 3 for s in samples]
++        raw_lengths = [s.get("raw_audio_length", 0) for s in samples]
++        input_prompt_lengths = [s["input_length"] + s['prompt_length'] + raw_lengths[idx] + 3 for idx, s in enumerate(samples)]
++        input_answer_lengths = [len(s["input_ids"][0]) - input_prompt_lengths[idx] for idx, s in enumerate(samples)]
+ 
+         input_prompt_max_length = max(input_prompt_lengths)
+         input_answer_max_length = max(input_answer_lengths)
+@@ -405,7 +502,7 @@ class SpeechDatasetJsonl(torch.utils.data.Dataset):
+ 
+         modality_mask = torch.zeros_like(attention_mask)
+         for index in range(len(samples)):
+-            padding_left = input_prompt_max_length - input_prompt_lengths[index] + 1 + samples[index]['prompt_length'] # +1 for <bos>
++            padding_left = input_prompt_max_length - input_prompt_lengths[index] + 1 + samples[index]['prompt_length'] + samples[index]["input_length"] + raw_lengths[index]  # +1 for <bos>
+             modality_mask[index, padding_left:padding_left+samples[index]["audio_length"]] = True
+ 
+         if self.inference_mode:
+@@ -414,6 +511,7 @@ class SpeechDatasetJsonl(torch.utils.data.Dataset):
+             source_text = [s['source_text'] for s in samples]
+             target_audio = [s['target_audio'] for s in samples]
+             neutral_speaker_wav = [s['neutral_speaker_wav'] for s in samples]
++            raw_wav = [s.get('raw_wav', None) for s in samples]
+ 
+             return {
+                 "input_ids": input_ids,
+@@ -428,6 +526,7 @@ class SpeechDatasetJsonl(torch.utils.data.Dataset):
+                 "source_texts": source_text,
+                 "target_audio": target_audio,
+                 "neutral_speaker_wav": neutral_speaker_wav,
++                "raw_wav": raw_wav,
+             }
+         
+         labels = torch.stack([
+@@ -437,6 +536,17 @@ class SpeechDatasetJsonl(torch.utils.data.Dataset):
+             for index in range(len(samples))
+         ])
+         
++        # Pad prosody_mask: [batch, code_layer, answer_max_length]
++        # Only pad on the right (answer side) to match audio labels alignment
++        prosody_mask = None
++        if samples[0].get("prosody_mask", None) is not None:
++            prosody_mask = torch.stack([
++                self.padding(
++                    samples[index]["prosody_mask"],
++                    input_answer_max_length - input_answer_lengths[index], 0
++                ) for index in range(len(samples))
++            ])  # [batch, code_layer, answer_max_length]
++
+         return {
+             "input_ids": input_ids,
+             "labels": labels,
+@@ -446,6 +556,7 @@ class SpeechDatasetJsonl(torch.utils.data.Dataset):
+             "input_length": input_length,
+             "audio_length": audio_length,
+             "modality_mask": modality_mask,
++            "prosody_mask": prosody_mask,
+         }
+ 
+ 
+diff --git a/examples/tts/tts_config.py b/examples/tts/tts_config.py
+index bf2d99e..b2b76b8 100644
+--- a/examples/tts/tts_config.py
++++ b/examples/tts/tts_config.py
+@@ -100,6 +100,8 @@ class ModelConfig:
+     use_text_stream: bool = True
+     save_audio_token: bool= False
+     phn_tokenizer: Optional[str] = None
++    prosody_stress_weight: float = 0.3
++    prosody_pause_weight: float = 0.3
+ 
+ 
+ @dataclass
+@@ -197,12 +199,15 @@ class DataConfig:
+     num_latency_tokens: int = 0
+     do_layershift: bool = True
+     use_emo: bool = False
++    use_instruct: bool = False
+     use_text_stream: bool = True
+     modeling_paradigm: str = field(default="parallel", metadata={
+         "help": "alternative: interleaved"
+     })
+     interleaved_text_token_num: int = 12
+     interleaved_audio_token_num: int = 36
++    tts_refine: bool = False
++    raw_audio_position: str = "middle"  # "middle" (v1.1+) or "end" (before v1.1)
+ 
+ @dataclass
+ class DecodeConfig:
+@@ -254,4 +259,3 @@ class LogConfig:
+     log_file: str = ""
+     log_interval: int = 10
+     online_output_dir: Optional[str] = None
+-
+diff --git a/src/slam_llm/models/slam_model.py b/src/slam_llm/models/slam_model.py
+index 652e4ba..7eebeb5 100644
+--- a/src/slam_llm/models/slam_model.py
++++ b/src/slam_llm/models/slam_model.py
+@@ -66,6 +66,15 @@ def setup_tokenizer(train_config, model_config, **kwargs):
+         else:
+             tokenizer = AutoTokenizer.from_pretrained(model_config.llm_path)
+         tokenizer.pad_token_id = tokenizer.eos_token_id
++
++    # Add prosodic control special tokens (stress / pause markers)
++    prosodic_special_tokens = ['<strong>', '</strong>', '[breath]']
++    num_added = tokenizer.add_special_tokens({
++        'additional_special_tokens': prosodic_special_tokens
++    })
++    if num_added > 0:
++        logger.info("Added {} prosodic special tokens: {}".format(num_added, prosodic_special_tokens))
++
+     return tokenizer
+ 
+ 
