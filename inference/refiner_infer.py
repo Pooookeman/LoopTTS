@@ -8,6 +8,7 @@ The generated JSONL also uses relative paths, so it can be moved with the run.
 from __future__ import annotations
 
 import argparse
+import gc
 import json
 import os
 import re
@@ -86,7 +87,13 @@ def extract_speech_tokens(wav: Path, cosyvoice_dir: Path, emovoice: Path) -> lis
     if speech.shape[-1] / 16000 > 25:
         raise ValueError("Input audio exceeds the 25-second codec limit.")
     tokens, _ = codec.frontend._extract_speech_token(speech)
-    return tokens[0].cpu().tolist()
+    result = tokens[0].cpu().tolist()
+    del codec, speech, tokens
+    gc.collect()
+    import torch
+    if torch.cuda.is_initialized():
+        torch.cuda.empty_cache()
+    return result
 
 
 def run_inference(args: argparse.Namespace, jsonl: Path) -> None:
@@ -150,6 +157,8 @@ def run_inference(args: argparse.Namespace, jsonl: Path) -> None:
     env["OMP_NUM_THREADS"] = "1"
     subprocess.run(command, cwd=emovoice, env=env, check=True)
     output_wav = decode_log / "pred_audio" / "neutral_prompt_speech" / f"{args.key}.wav"
+    if not output_wav.is_file():
+        raise RuntimeError(f"Inference finished without an output WAV; inspect {rel(decode_log / 'infer.log')}.")
     print(f"Generated audio: {output_wav.relative_to(REPO_ROOT)}")
 
 

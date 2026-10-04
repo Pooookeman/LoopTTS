@@ -14,7 +14,7 @@ python -m pip install -r third_party/EmoVoice/requirements.txt
 python -m pip install huggingface_hub
 ```
 
-The setup script pins the [upstream EmoVoice repository](https://github.com/yanghaha0908/EmoVoice) to commit `5285cb891611cf1ee2d9bd07b931cd3cf967cd64` and applies the Refiner changes preserved from the evaluated code. Upstream EmoVoice code retains its MIT license. The Refiner wrapper and patch in this repository use CC BY-NC 4.0.
+The setup script pins the [upstream EmoVoice repository](https://github.com/yanghaha0908/EmoVoice) to commit `5285cb891611cf1ee2d9bd07b931cd3cf967cd64` and applies only the Refiner inference changes needed by the evaluated checkpoint. Upstream EmoVoice code retains its MIT license. The Refiner wrapper and patch in this repository use CC BY-NC 4.0.
 
 Download the Refiner checkpoint and its two runtime dependencies into the repository:
 
@@ -35,7 +35,7 @@ python inference/refiner_infer.py \
   --instruction "Speak with an angry emotion at a moderate speed and high pitch. Stress the word 'no'."
 ```
 
-The output WAV appears at `runs/refiner/decode/pred_audio/neutral_prompt_speech/sample.wav`. The wrapper first extracts CosyVoice tokens from the input WAV, then calls the evaluated EmoVoice Refiner decoder with greedy decoding and `raw_audio_position=end`. It writes a one-line input JSONL with **relative paths** under `runs/refiner/`.
+The output WAV appears at `runs/refiner/decode/pred_audio/neutral_prompt_speech/sample.wav`. The wrapper first extracts CosyVoice tokens from the input WAV, frees the preprocessing model's cached memory, then calls the evaluated EmoVoice Refiner decoder with greedy decoding and `raw_audio_position=end`. It writes a one-line input JSONL with **relative paths** under `runs/refiner/`.
 
 Use `--key` and `--output-dir` to distinguish runs. `--checkpoint`, `--qwen`, `--cosyvoice`, and `--emovoice` override the default model and source locations. Every file path supplied to the wrapper must be relative to the LoopTTS repository. Do not commit input audio or generated runs.
 

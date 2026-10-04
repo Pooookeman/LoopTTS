@@ -49,7 +49,7 @@ The Refiner training framework and configuration files are being organized for r
 
 ## Refiner Inference
 
-The [Refiner inference release](inference/README.md) provides a cleaned-up command for refining a WAV from its transcript and a prosody instruction. It includes the exact code changes used with the [1.5B checkpoint](https://huggingface.co/Poookeman/LoopTTS-Refiner-1.5B). This release covers the Refiner stage only.
+The [Refiner inference release](inference/README.md) provides a command for refining a WAV from its transcript and a prosody instruction. Its patch contains the inference-specific changes needed by the [1.5B checkpoint](https://huggingface.co/Poookeman/LoopTTS-Refiner-1.5B). This release covers the Refiner stage only.
 
 ## Refiner-DB
 
