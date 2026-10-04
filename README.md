@@ -9,7 +9,7 @@
 <img alt="Paper coming soon" src="https://img.shields.io/badge/Paper-Coming_Soon-6B7280?style=flat-square">
 <a href="https://pooookeman.github.io/LoopTTS/"><img alt="Audio Demo" src="https://img.shields.io/badge/Audio_Demo-Listen-2F855A?style=flat-square&logo=githubpages&logoColor=white"></a>
 <img alt="Training coming soon" src="https://img.shields.io/badge/Training-Coming_Soon-6B7280?style=flat-square">
-<img alt="Dataset coming soon" src="https://img.shields.io/badge/Dataset-Coming_Soon-6B7280?style=flat-square">
+<a href="https://huggingface.co/datasets/Poookeman/Refiner-DB"><img alt="Refiner-DB dataset" src="https://img.shields.io/badge/Dataset-Refiner--DB-FFD21E?style=flat-square&logo=huggingface&logoColor=black"></a>
 
 </div>
 
@@ -30,7 +30,7 @@ The refine instruction combines global attributes such as emotion, speed, and pi
 | Paper | Coming soon | arXiv |
 | Audio demo | Available | [Project page](https://pooookeman.github.io/LoopTTS/) |
 | Training framework | Coming soon | This repository |
-| Refiner-DB | Coming soon | Hugging Face |
+| Refiner-DB | Available | [Hugging Face dataset](https://huggingface.co/datasets/Poookeman/Refiner-DB) |
 
 ## Audio Demo
 
@@ -47,7 +47,9 @@ The Refiner training framework and configuration files are being organized for r
 
 ## Refiner-DB
 
-Refiner-DB and its data preparation documentation will be released through Hugging Face. The dataset link and redistribution details will be added here when the release is ready.
+[Refiner-DB](https://huggingface.co/datasets/Poookeman/Refiner-DB) contains **42,338 processed training examples** with Gemini-generated refinement suggestions and a separate **200-example human-annotated test set**. The JSONL records retain the full utterance text and use relative paths to the included WAV files. Training and test data have separate schemas and are available as the `gemini_train` and `human_test` dataset configurations.
+
+The dataset card documents the fields, audio archives, download and extraction steps, source corpora, and checksums. The preliminary 42,420-example collection is not part of this release.
 
 ## Citation
 
@@ -62,4 +64,4 @@ Refiner-DB and its data preparation documentation will be released through Huggi
 
 ## License
 
-The code, model, and dataset licenses will be specified with their respective releases.
+Refiner-DB is released under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) for noncommercial use. See the [dataset card](https://huggingface.co/datasets/Poookeman/Refiner-DB) for terms and source acknowledgments. Code and model licenses will be specified with their respective releases.
