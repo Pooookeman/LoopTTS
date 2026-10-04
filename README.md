@@ -6,9 +6,8 @@
 
 **EMNLP 2026 Main Conference**
 
-<img alt="Paper coming soon" src="https://img.shields.io/badge/Paper-Coming_Soon-6B7280?style=flat-square">
+<a href="https://arxiv.org/abs/2608.28970"><img alt="Paper on arXiv" src="https://img.shields.io/badge/Paper-arXiv-B31B1B?style=flat-square&logo=arxiv&logoColor=white"></a>
 <a href="https://pooookeman.github.io/LoopTTS/"><img alt="Audio Demo" src="https://img.shields.io/badge/Audio_Demo-Listen-2F855A?style=flat-square&logo=githubpages&logoColor=white"></a>
-<img alt="Training coming soon" src="https://img.shields.io/badge/Training-Coming_Soon-6B7280?style=flat-square">
 <a href="https://huggingface.co/datasets/Poookeman/Refiner-DB"><img alt="Refiner-DB dataset" src="https://img.shields.io/badge/Dataset-Refiner--DB-FFD21E?style=flat-square&logo=huggingface&logoColor=black"></a>
 
 </div>
@@ -27,7 +26,7 @@ The refine instruction combines global attributes such as emotion, speed, and pi
 
 | Resource | Status | Link |
 |---|---|---|
-| Paper | Coming soon | arXiv |
+| Paper | Available | [arXiv:2608.28970](https://arxiv.org/abs/2608.28970) |
 | Audio demo | Available | [Project page](https://pooookeman.github.io/LoopTTS/) |
 | Refiner-DB | Available | [Hugging Face dataset](https://huggingface.co/datasets/Poookeman/Refiner-DB) |
 | Refiner inference | Available | [Instructions](inference/README.md) |
@@ -59,7 +58,10 @@ The dataset card documents the fields, audio archives, download and extraction s
   title     = {Diagnose, Then Refine: A Closed-Loop TTS System with AudioLLM-Guided Correction},
   author    = {Song, Zeyang and Liu, Tianchi and Wang, Tianrui and Xu, Chenglin and Guo, Yiwen and Li, Haizhou},
   booktitle = {Proceedings of the 2026 Conference on Empirical Methods in Natural Language Processing},
-  year      = {2026}
+  year      = {2026},
+  eprint    = {2608.28970},
+  archivePrefix = {arXiv},
+  url       = {https://arxiv.org/abs/2608.28970}
 }
 ```
 
