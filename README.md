@@ -49,7 +49,7 @@ The Refiner training framework and configuration files are being organized for r
 
 ## Refiner Inference
 
-The [Refiner inference release](inference/README.md) provides a command for refining a WAV from its transcript and a prosody instruction. Its patch contains the inference-specific changes needed by the [1.5B checkpoint](https://huggingface.co/Poookeman/LoopTTS-Refiner-1.5B). This release covers the Refiner stage only.
+The [standalone Refiner inference release](inference/README.md) provides a direct command for refining a WAV from its transcript and a prosody instruction using the [1.5B checkpoint](https://huggingface.co/Poookeman/LoopTTS-Refiner-1.5B). It needs the Qwen and CosyVoice dependencies but no EmoVoice source or patch. This release covers the Refiner stage only.
 
 ## Refiner-DB
 
@@ -70,4 +70,4 @@ The dataset card documents the fields, audio archives, download and extraction s
 
 ## License
 
-The released Refiner inference code, patch, checkpoint, and Refiner-DB are licensed under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) for noncommercial use. Upstream dependencies retain their original licenses. See the [dataset card](https://huggingface.co/datasets/Poookeman/Refiner-DB) and [model card](https://huggingface.co/Poookeman/LoopTTS-Refiner-1.5B) for details.
+The released Refiner inference code, checkpoint, and Refiner-DB are licensed under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) for noncommercial use. Adapted EmoVoice portions and upstream dependencies retain their original licenses; see the [inference notices](inference/THIRD_PARTY_NOTICES.md), [dataset card](https://huggingface.co/datasets/Poookeman/Refiner-DB), and [model card](https://huggingface.co/Poookeman/LoopTTS-Refiner-1.5B).
