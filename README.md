@@ -29,7 +29,6 @@ The refine instruction combines global attributes such as emotion, speed, and pi
 |---|---|---|
 | Paper | Coming soon | arXiv |
 | Audio demo | Available | [Project page](https://pooookeman.github.io/LoopTTS/) |
-| Training framework | Coming soon | This repository |
 | Refiner-DB | Available | [Hugging Face dataset](https://huggingface.co/datasets/Poookeman/Refiner-DB) |
 | Refiner inference | Available | [Instructions](inference/README.md) |
 | Refiner checkpoint | Available | [Hugging Face model](https://huggingface.co/Poookeman/LoopTTS-Refiner-1.5B) |
@@ -42,10 +41,6 @@ The [project page](https://pooookeman.github.io/LoopTTS/) contains examples of:
 - speed and pitch control from the same initial utterance;
 - AudioLLM-generated refine instructions;
 - before/after refinement comparisons from the full LoopTTS pipeline.
-
-## Training Framework
-
-The Refiner training framework and configuration files are being organized for release. They will be added to this repository without changing the project URL.
 
 ## Refiner Inference
 
